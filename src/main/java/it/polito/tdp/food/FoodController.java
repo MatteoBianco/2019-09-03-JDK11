@@ -5,6 +5,7 @@
 package it.polito.tdp.food;
 
 import java.net.URL;
+import java.util.List;
 import java.util.ResourceBundle;
 import it.polito.tdp.food.model.Model;
 import javafx.event.ActionEvent;
@@ -40,7 +41,7 @@ public class FoodController {
     private Button btnCammino; // Value injected by FXMLLoader
 
     @FXML // fx:id="boxPorzioni"
-    private ComboBox<?> boxPorzioni; // Value injected by FXMLLoader
+    private ComboBox<String> boxPorzioni; // Value injected by FXMLLoader
 
     @FXML // fx:id="txtResult"
     private TextArea txtResult; // Value injected by FXMLLoader
@@ -48,21 +49,92 @@ public class FoodController {
     @FXML
     void doCammino(ActionEvent event) {
     	txtResult.clear();
-    	txtResult.appendText("Cerco cammino peso massimo...");
+    	String portionName = boxPorzioni.getValue();
+    	if(portionName == null) {
+    		txtResult.setText("Selezionare un tipo di porzione tra quelle elencate per poter procedere "
+    				+ "con la ricorsione.\n");
+    		return;
+    	}
+    	Integer N;
+    	try {
+    		N = Integer.parseInt(txtPassi.getText());
+    	} catch(NumberFormatException e) {
+    		txtResult.setText("Inserire un numero intero che indichi il numero di passi del cammino!\n");
+    		return;
+    	}
+    	if(N < 0) {
+    		txtResult.setText("Inserire un valore positivo che indichi il numero di passi!\n");
+    		return;
+    	}
+    	List<String> path = this.model.bestPath(portionName, N);
+    	if(path.isEmpty()) {
+    		txtResult.setText("Nessun cammino trovato.\n");
+    		return;
+    	}
+    	txtResult.appendText("Percorso di peso " + this.model.bestWeight() + " trovato a partire "
+    			+ "dal vertice " + portionName + "\n");
+    	for(String s : path) {
+    		txtResult.appendText("\n" + s);
+    	}
     }
 
     @FXML
     void doCorrelate(ActionEvent event) {
     	txtResult.clear();
-    	txtResult.appendText("Cerco porzioni correlate...");
-    	
+    	String portionName = boxPorzioni.getValue();
+    	if(portionName == null) {
+    		txtResult.setText("Selezionare un tipo di porzione tra quelle elencate per poter procedere "
+    				+ "con l'analisi dei vicini.\n");
+    		return;
+    	}
+    	List<String> neighbors = this.model.getNeighborsOf(portionName);
+    	if(neighbors.isEmpty()) {
+    		txtResult.appendText(String.format("La porzione %s non ha nessun vicino.\n", portionName));
+    		return;
+    	}
+    	txtResult.appendText(String.format("Vicini della porzione %s:\n\n", portionName));
+    	for(String n : neighbors) {
+    		txtResult.appendText(n + "\n");
+    	}
     }
 
     @FXML
     void doCreaGrafo(ActionEvent event) {
     	txtResult.clear();
-    	txtResult.appendText("Creazione grafo...");
-    	
+    	Integer calories;
+    	try {
+    		calories = Integer.parseInt(txtCalorie.getText());
+    	} catch(NumberFormatException e) {
+    		txtResult.setText("Inserire un numero intero che indichi le calorie massime!\n");
+    		return;
+    	}
+    	if(calories < 0) {
+    		txtResult.setText("Inserire un valore positivo che indichi le calorie massime!\n");
+    		return;
+    	}
+    	this.model.createGraph(calories);
+    	if(this.model.vertexSize() == null || this.model.edgeSize() == null) {
+    		txtResult.setText("Problema nella creazione del grafo.");
+    		return;
+    	}
+    	txtResult.appendText("Grafo creato (" + this.model.vertexSize() + " vertici,  " + this.model.edgeSize() + " archi) "
+    			+ "con le specifiche inviate.\n"
+    			+ "Sono disponibili nuove azioni.");
+    	boxPorzioni.setDisable(false);
+    	boxPorzioni.getItems().addAll(this.model.getAllVertices());
+    	btnCorrelate.setDisable(false);   
+    	btnCammino.setDisable(false);
+    	txtPassi.setDisable(false);
+
+    }
+    
+    @FXML
+    void doBloccaAzioni(ActionEvent event) {
+    	boxPorzioni.setDisable(true);
+    	btnCorrelate.setDisable(true);
+    	btnCammino.setDisable(true);
+    	txtPassi.setDisable(true);
+
     }
 
     @FXML // This method is called by the FXMLLoader when initialization is complete
@@ -79,5 +151,12 @@ public class FoodController {
     
     public void setModel(Model model) {
     	this.model = model;
+    	boxPorzioni.setDisable(true);
+    	btnCorrelate.setDisable(true);
+    	btnCammino.setDisable(true);
+    	txtPassi.setDisable(true);
+    	txtResult.setText("Inserire il valore delle calorie massime per i tipi di porzione che si vogliono "
+    			+ "visualizzare. I valori delle calorie sono compresi in un range tra 0 e 1670 circa, con una "
+    			+ "maggiore densità nelle prime centinaia (valori consigliati).");
     }
 }
